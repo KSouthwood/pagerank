@@ -1,76 +1,82 @@
 package pagerank;
 
-import Jama.EigenvalueDecomposition;
 import Jama.Matrix;
 
 import java.text.DecimalFormat;
-import java.util.Arrays;
 
 public class Main {
+    // test matrix for use to check against examples in project descriptions
+    private static final double[][] testL = new double[][]{
+            {        0, 1.0 / 2.0, 1.0 / 3.0,         0,         0,         0},
+            {1.0 / 3.0,         0,         0,         0, 1.0 / 2.0, 1.0 / 3.0},
+            {1.0 / 3.0, 1.0 / 2.0,         0,       1.0,         0,         0},
+            {1.0 / 3.0,         0, 1.0 / 3.0,         0, 1.0 / 2.0, 1.0 / 3.0},
+            {        0,         0,         0,         0,         0, 1.0 / 3.0},
+            {        0,         0, 1.0 / 3.0,         0,         0,         0}
+    };
+
+    // real matrix for use in actual testing to pass tests
+    private static final double[][] realL = new double[][]{
+            {        0, 1.0 / 2.0, 1.0 / 3.0,         0,         0,         0},
+            {1.0 / 3.0,         0,         0,         0, 1.0 / 2.0,         0},
+            {1.0 / 3.0, 1.0 / 2.0,         0,       1.0,         0, 1.0 / 2.0},
+            {1.0 / 3.0,         0, 1.0 / 3.0,         0, 1.0 / 2.0, 1.0 / 2.0},
+            {        0,         0,         0,         0,         0,         0},
+            {        0,         0, 1.0 / 3.0,         0,         0,         0}
+    };
+
     public static void main(String[] args) {
-        Ranking r = new Ranking();
-        r.printMatrix();
-        System.out.println();
-        r.printEigenvalues();
-    }
-}
-
-class Ranking {
-    private double[][] L;
-
-    Ranking() {
-        L = new double[][]{
-                {0, 1.0 / 2.0, 1.0 / 3.0, 0, 0, 0},
-                {1.0 / 3.0, 0, 0, 0, 1.0 / 2.0, 0},
-                {1.0 / 3.0, 1.0 / 2.0, 0, 1.0, 0, 1.0 / 2.0},
-                {1.0 / 3.0, 0, 1.0 / 3.0, 0, 1.0 / 2.0, 1.0 / 2.0},
-                {0, 0, 0, 0, 0, 0},
-                {0, 0, 1.0 / 3.0, 0, 0, 0}
-                };
+        // distribute 100 users across six websites
+        double[] users = new double[6];
+        for (int i = 0; i < users.length; i++) {
+            users[i] = 1.00;
+            users[i] = 100 * users[i] / 6;
         }
 
-    public void printMatrix() {
-        Matrix m = new Matrix(L);
-        m.print(0, 3);
+        Matrix r = new Matrix(users, 1);
+        Matrix L = new Matrix(realL);
+
+        r = iterateMatrixNTimes(r, L, 1);
+        print1DMatrix(r);
+        r = iterateMatrixNTimes(r, L, 10);
+        print1DMatrix(r);
+        r = iterateMatrixToNorm(r, L);
+        print1DMatrix(r);
     }
 
-    public void printEigenvalues() {
-        Matrix m = new Matrix(L);
-        // find eigenvalues
-        EigenvalueDecomposition eigen = m.eig();
-        final double[] realPart = eigen.getRealEigenvalues();
-        // find eigenvectors
-        Matrix evectors = eigen.getV();
-//        System.out.println(Arrays.toString(realPart));
-//        evectors.print(5, 3);
-
-        // find value of 1 in realPart
-        int colToGet = -1;
-        for (int col = 0; col < realPart.length; col++) {
-            if (Math.abs(realPart[col] - 1.0) < 1E-3) {
-                colToGet = col;
-                break;
-            }
-        }
-
-        double[] principalEvector = new double[evectors.getRowDimension()];
-        for (int row = 0; row < evectors.getRowDimension(); row++) {
-            principalEvector[row] = evectors.get(row, colToGet);
-        }
-
-        double sum = 0.00;
-        for (double value : principalEvector) {
-            sum += value;
-        }
-
-        double[] res = new double[principalEvector.length];
-        for (int i = 0; i < res.length; i++) {
-            res[i] = 100 * principalEvector[i] / sum;
-        }
-
+    private static void print1DMatrix(Matrix pMatrix) {
+        double[] res = pMatrix.getColumnPackedCopy();
         for (double x : res) {
             System.out.println(new DecimalFormat("#0.000").format(x));
         }
+        System.out.println();
+    }
 
+    private static Matrix iterateMatrixNTimes(Matrix r, Matrix l, int iterations) {
+        Matrix r0 = r;
+        if (r.getRowDimension() == 1) {
+            r0 = r.transpose();
+        }
+
+        for (int i = 0; i < iterations; i++) {
+            r0 = l.times(r0);
+        }
+        return r0;
+    }
+
+    private static Matrix iterateMatrixToNorm(Matrix r, Matrix l) {
+        Matrix prevR = r;
+        Matrix nextR = null;
+        boolean iterate = true;
+
+        while (iterate) {
+            nextR = iterateMatrixNTimes(prevR, l, 1);
+            if (prevR.minus(nextR).normInf() < 0.01) {
+                iterate = false;
+            }
+            prevR = nextR;
+        }
+
+        return nextR;
     }
 }
