@@ -1,12 +1,12 @@
 package pagerank;
 
 import Jama.Matrix;
-
 import java.text.DecimalFormat;
+import java.util.Arrays;
 
 public class Main {
     // test matrix for use to check against examples in project descriptions
-    private static final double[][] testL = new double[][]{
+    private static final double[][] L0 = new double[][]{
             {        0, 1.0 / 2.0, 1.0 / 3.0,         0,         0,         0},
             {1.0 / 3.0,         0,         0,         0, 1.0 / 2.0, 1.0 / 3.0},
             {1.0 / 3.0, 1.0 / 2.0,         0,       1.0,         0,         0},
@@ -15,8 +15,8 @@ public class Main {
             {        0,         0, 1.0 / 3.0,         0,         0,         0}
     };
 
-    // real matrix for use in actual testing to pass tests
-    private static final double[][] realL = new double[][]{
+    // real matrix for use in actual testing to pass tests (Stage 1 & 2)
+    private static final double[][] L1 = new double[][]{
             {        0, 1.0 / 2.0, 1.0 / 3.0,         0,         0,         0},
             {1.0 / 3.0,         0,         0,         0, 1.0 / 2.0,         0},
             {1.0 / 3.0, 1.0 / 2.0,         0,       1.0,         0, 1.0 / 2.0},
@@ -25,23 +25,71 @@ public class Main {
             {        0,         0, 1.0 / 3.0,         0,         0,         0}
     };
 
+    // real matrix for use in actual testing to pass tests (Stage 3)
+    private static final double[][] L2 = new double[][]{
+            {        0, 1.0 / 2.0, 1.0 / 3.0,         0,         0,         0,         0},
+            {1.0 / 3.0,         0,         0,         0, 1.0 / 2.0,         0,         0},
+            {1.0 / 3.0, 1.0 / 2.0,         0,       1.0,         0, 1.0 / 3.0,         0},
+            {1.0 / 3.0,         0, 1.0 / 3.0,         0, 1.0 / 2.0, 1.0 / 3.0,         0},
+            {        0,         0,         0,         0,         0,         0,         0},
+            {        0,         0, 1.0 / 3.0,         0,         0,         0,         0},
+            {        0,         0,         0,         0,         0, 1.0 / 3.0,       1.0}
+    };
+
     public static void main(String[] args) {
-        // distribute 100 users across six websites
-        double[] users = new double[6];
+        double[][] lToUse = L2;
+        // distribute 100 users across the number of websites in the matrix
+        double[] users = new double[lToUse.length];
         for (int i = 0; i < users.length; i++) {
             users[i] = 1.00;
-            users[i] = 100 * users[i] / 6;
+            users[i] = 100 * users[i] / lToUse.length;
         }
 
         Matrix r = new Matrix(users, 1);
-        Matrix L = new Matrix(realL);
+        Matrix L = new Matrix(lToUse);
 
-        r = iterateMatrixNTimes(r, L, 1);
+//        powerIterateStageTwo(r, L);
+        powerIterateStage3(r, L);
+    }
+
+    /**
+     * Iterate the matrix once, 10 more times, then to norm - printing out after each step.
+     * @param r - initial users per website, usually evenly spread out across all
+     * @param l - probabilities of moving from one website to another
+     */
+    private static void powerIterateStageTwo(Matrix r, Matrix l) {
+        r = iterateMatrixNTimes(r, l, 1);
         print1DMatrix(r);
-        r = iterateMatrixNTimes(r, L, 10);
+        r = iterateMatrixNTimes(r, l, 10);
         print1DMatrix(r);
-        r = iterateMatrixToNorm(r, L);
+        r = iterateMatrixToNorm(r, l);
         print1DMatrix(r);
+    }
+
+    /**
+     * Iterate the matrix to norm, first without damping the probability matrix, then after damping the matrix.
+     * Print out the probability matrix, then the PageRank vectors without and with damping.
+     * @param r - initial users per website
+     * @param l - probabilities of moving from one website to another
+     */
+    private static void powerIterateStage3(Matrix r, Matrix l) {
+        double[][] j = new double[l.getRowDimension()][l.getColumnDimension()];
+        for (double[] row : j) {
+            Arrays.fill(row, 1.0);
+        }
+        Matrix J = new Matrix(j);
+
+        double d = 0.5; // damping value
+
+        // J matrix times 1 minus damping value divided by number of sites
+        Matrix M0 = J.times((1.0 - d) / J.getRowDimension());
+        Matrix M1 = l.times(d); // probability matrix times damping value
+        Matrix M = M1.plus(M0); // add the two to get our new damped probability matrix
+        Matrix undamped = iterateMatrixToNorm(r, l);
+        Matrix damped = iterateMatrixToNorm(r, M);
+        l.print(0, 3);
+        undamped.print(0, 3);
+        damped.print(0, 3);
     }
 
     private static void print1DMatrix(Matrix pMatrix) {
@@ -66,6 +114,10 @@ public class Main {
 
     private static Matrix iterateMatrixToNorm(Matrix r, Matrix l) {
         Matrix prevR = r;
+        if (r.getRowDimension() == 1) {
+            prevR = r.transpose();
+        }
+
         Matrix nextR = null;
         boolean iterate = true;
 
