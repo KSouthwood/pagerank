@@ -1,5 +1,8 @@
 package pagerank;
 
+import Jama.EigenvalueDecomposition;
+import Jama.Matrix;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -41,19 +44,92 @@ public class Main {
     static final Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-//        powerIterateStageTwo(L1);
-//        powerIterateStage3(L2);
-//        stage4();
-        stage5();
+        int choice = -1;
+        while (choice != 0) {
+            System.out.println("Which stage do you wish to run:");
+            System.out.println("1. Stage 1 (N/A)");
+            System.out.println("2. Stage 2");
+            System.out.println("3. Stage 3");
+            System.out.println("4. Stage 4");
+            System.out.println("5. Stage 5");
+            System.out.println("0. Quit");
+
+            choice = Integer.parseInt(scanner.nextLine());
+            switch (choice) {
+                case 0:
+                    System.out.println("Thank you and goodbye!");
+                    break;
+                case 1:
+                    stage1();
+                    break;
+                case 2:
+                    powerIterateStage2();
+                    break;
+                case 3:
+                    powerIterateStage3();
+                    break;
+                case 4:
+                    stage4();
+                    break;
+                case 5:
+                    stage5();
+                    break;
+                default:
+                    System.out.println("Invalid choice. Choose again.");
+                    break;
+            }
+        }
+    }
+
+    /**
+     * Output the matrix, then output the eigenvalues
+     */
+    private static void stage1() {
+        Matrix m = new Matrix(Main.L1);
+        m.print(0, 3);
+        System.out.println();
+
+        // find eigenvalues
+        EigenvalueDecomposition eigen = m.eig();
+        final double[] realPart = eigen.getRealEigenvalues();
+        // find eigenvectors
+        Matrix eVectors = eigen.getV();
+
+        // find value of 1 in realPart
+        int colToGet = -1;
+        for (int col = 0; col < realPart.length; col++) {
+            if (Math.abs(realPart[col] - 1.0) < 1E-3) {
+                colToGet = col;
+                break;
+            }
+        }
+
+        double[] principalEVector = new double[eVectors.getRowDimension()];
+        for (int row = 0; row < eVectors.getRowDimension(); row++) {
+            principalEVector[row] = eVectors.get(row, colToGet);
+        }
+
+        double sum = 0.00;
+        for (double value : principalEVector) {
+            sum += value;
+        }
+
+        double[] res = new double[principalEVector.length];
+        for (int i = 0; i < res.length; i++) {
+            res[i] = 100 * principalEVector[i] / sum;
+        }
+
+        for (double x : res) {
+            System.out.println(new DecimalFormat("#0.000").format(x));
+        }
     }
 
     /**
      * Iterate the matrix once, 10 more times, then to norm - printing out after each step.
      *
-     * @param l - probabilities of moving from one website to another
      */
-    private static void powerIterateStage2(double[][] l) {
-        PageRank pr = new PageRank(l);
+    private static void powerIterateStage2() {
+        PageRank pr = new PageRank(Main.L1);
         pr.iterateMatrixNTimes(1);
         pr.print();
         pr.iterateMatrixNTimes(10);
@@ -66,15 +142,14 @@ public class Main {
      * Iterate the matrix to norm, first without damping the probability matrix, then after damping the matrix.
      * Print out the probability matrix, then the PageRank vectors without and with damping.
      *
-     * @param l - probabilities of moving from one website to another
      */
-    private static void powerIterateStage3(double[][] l) {
+    private static void powerIterateStage3() {
         double d = 0.5;
-        PageRank pr = new PageRank(l);  // un-damped pagerank
+        PageRank pr = new PageRank(Main.L2);  // un-damped pagerank
         pr.printL();
         pr.iterateMatrixToNorm();
         pr.print();
-        pr = new PageRank(l); // reset so we can damp it
+        pr = new PageRank(Main.L2); // reset so we can damp it
         pr.dampMatrix(d);
         pr.iterateMatrixToNorm();
         pr.print();
