@@ -1,5 +1,9 @@
 package pagerank;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 public class Main {
@@ -34,10 +38,13 @@ public class Main {
             {0, 0, 0, 0, 0, 1.0 / 3.0, 1.0}
     };
 
+    static final Scanner scanner = new Scanner(System.in);
+
     public static void main(String[] args) {
 //        powerIterateStageTwo(L1);
 //        powerIterateStage3(L2);
-        stage4();
+//        stage4();
+        stage5();
     }
 
     /**
@@ -78,11 +85,20 @@ public class Main {
      * matrix line-by-line. Damp the matrix and iterate to the norm and output the result.
      */
     private static void stage4() {
-        final Scanner scanner = new Scanner(System.in);
         String[] input = scanner.nextLine().split("\\s");
         int dim = Integer.parseInt(input[0]);
         double damping = Double.parseDouble(input[1]);
 
+        double[][] matrix = readMatrixFromInput(dim);
+
+        PageRank pr = new PageRank(matrix);
+        pr.dampMatrix(damping);
+        pr.iterateMatrixToNorm();
+        pr.print();
+    }
+
+    private static double[][] readMatrixFromInput(int dim) {
+        String[] input;
         double[][] matrix = new double[dim][dim];
         for (int row = 0; row < dim; row++) {
             input = scanner.nextLine().split("\\s");
@@ -90,10 +106,48 @@ public class Main {
                 matrix[row][col] = Double.parseDouble(input[col]);
             }
         }
+        return matrix;
+    }
+
+    private static void stage5() {
+        int inputs = Integer.parseInt(scanner.nextLine());
+
+        String[] website = scanner.nextLine().split("\\s");
+        if (website.length != inputs) {
+            System.out.println("Amount of websites doesn't match the expected number.");
+            return;
+        }
+
+        double[][] matrix = readMatrixFromInput(inputs);
+
+        String siteQuery = scanner.next();
 
         PageRank pr = new PageRank(matrix);
-        pr.dampMatrix(damping);
+        pr.dampMatrix(0.5);
         pr.iterateMatrixToNorm();
-        pr.print();
+
+        List<Map.Entry<String, Double>> rankings = new ArrayList<>();
+        double[] pageRank = pr.getMatrix();
+        int printOut = 5;
+
+        for (int index = 0; index < inputs; index++) {
+            if (!website[index].contains(siteQuery)) {
+                rankings.add(Map.entry(website[index], pageRank[index]));
+            } else {
+                System.out.println(website[index]);
+                printOut--;
+            }
+
+        }
+
+        Comparator<Map.Entry<String, Double>> comparator =
+                Map.Entry.<String, Double>comparingByValue().reversed().
+                        thenComparing(Map.Entry.<String, Double>comparingByKey().reversed());
+        rankings.sort(comparator);
+
+        printOut = Math.min(printOut, rankings.size());
+        for (int index = 0; index < printOut; index++) {
+            System.out.println(rankings.get(index).getKey());
+        }
     }
 }

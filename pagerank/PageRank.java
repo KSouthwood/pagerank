@@ -1,6 +1,7 @@
 package pagerank;
 
 import Jama.Matrix;
+import java.util.Arrays;
 
 public class PageRank {
     private static final double PRECISION = 0.01;
@@ -20,9 +21,7 @@ public class PageRank {
 
     private void distributeUsers(int len) {
         double[] users = new double[len];
-        for (int i = 0; i < len; i++) {
-            users[i] = USERS * 1.00 / len;
-        }
+        Arrays.fill(users, USERS * 1.00 / len);
         r = new Matrix(users, 1).transpose();
     }
 
@@ -65,5 +64,9 @@ public class PageRank {
 
     public void printL() {
         L.print(0, 3);
+    }
+
+    double[] getMatrix() {
+        return r.getRowPackedCopy();
     }
 }
